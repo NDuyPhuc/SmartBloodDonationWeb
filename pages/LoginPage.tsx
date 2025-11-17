@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { HeartIcon } from '@heroicons/react/24/solid';
 import { auth } from '../firebase';
 import { signInWithEmailAndPassword } from 'firebase/auth';
@@ -11,6 +11,22 @@ const LoginPage: React.FC = () => {
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+
+  // Auto-fill form for demo purposes when tab changes
+  useEffect(() => {
+    if (activeTab === UserRole.Hospital) {
+      setEmail('hospital.demo@sbd.com');
+      setPassword('123456');
+    } else { // Admin
+      setEmail('admin.demo@sbd.com');
+      setPassword('123456');
+    }
+  }, [activeTab]);
+
+  const handleTabClick = (tab: UserRole) => {
+    setActiveTab(tab);
+    setError(null); // Clear error on tab switch
+  };
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -51,13 +67,13 @@ const LoginPage: React.FC = () => {
         <div>
           <div className="flex border-b">
             <button
-              onClick={() => setActiveTab(UserRole.Hospital)}
+              onClick={() => handleTabClick(UserRole.Hospital)}
               className={`w-1/2 py-2 text-sm font-medium ${activeTab === UserRole.Hospital ? 'border-b-2 border-red-500 text-red-600' : 'text-gray-500'}`}
             >
               {UserRole.Hospital}
             </button>
             <button
-              onClick={() => setActiveTab(UserRole.Admin)}
+              onClick={() => handleTabClick(UserRole.Admin)}
               className={`w-1/2 py-2 text-sm font-medium ${activeTab === UserRole.Admin ? 'border-b-2 border-red-500 text-red-600' : 'text-gray-500'}`}
             >
               {UserRole.Admin}
