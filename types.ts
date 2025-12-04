@@ -74,6 +74,11 @@ export interface Appointment {
   };
   hospitalName: string;
   status: AppointmentStatus;
+  certificateUrl?: string; // Link to the certificate file (Drive, Dropbox, etc.)
+  certificateIssuedAt?: {
+      seconds: number;
+      nanoseconds: number;
+  };
 }
 
 export interface PledgedDonor {
@@ -84,11 +89,19 @@ export interface PledgedDonor {
   userPhone?: string;
   userBloodType: BloodType;
   requestedBloodType?: BloodType;
-  status?: string;
   pledgedAt: {
     seconds: number;
     nanoseconds: number;
   };
+  // New fields for management
+  status?: 'Pending' | 'Completed' | 'Cancelled'; // Pending (Đã đăng ký), Completed (Đã hiến), Cancelled (Hủy)
+  certificateUrl?: string;
+  certificateIssuedAt?: {
+      seconds: number;
+      nanoseconds: number;
+  };
+  rating?: number; // 1-5 stars
+  review?: string;
 }
 
 

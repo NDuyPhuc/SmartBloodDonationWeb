@@ -223,7 +223,8 @@ const Dashboard: React.FC<DashboardProps> = ({ setActivePage }) => {
                   <h3 className="text-lg font-bold text-gray-800">Tỷ lệ Tồn kho</h3>
                   <p className="text-xs text-gray-400">Phân bố theo nhóm máu</p>
              </div>
-             <div className="flex-1 w-full relative">
+             {/* Use a fixed height for the chart container to prevent "width(-1) and height(-1)" warnings */}
+             <div className="flex-1 w-full relative" style={{ minHeight: '300px' }}>
                 <BloodTypePieChart data={displayChartData} />
              </div>
           </div>
