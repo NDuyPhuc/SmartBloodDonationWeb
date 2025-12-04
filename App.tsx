@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import Sidebar from './components/Sidebar';
 import Header from './components/Header';
@@ -27,6 +26,24 @@ const App: React.FC = () => {
   const [activePage, setActivePage] = useState<Page>(Page.Dashboard);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
+  // Load Google Maps Script Dynamically
+  useEffect(() => {
+    // Fix: Property 'env' does not exist on type 'ImportMeta'
+    // Use optional chaining to avoid crash if env is undefined
+    const apiKey = (import.meta as any)?.env?.VITE_GOOGLE_MAPS_API_KEY;
+    
+    if (apiKey && !document.getElementById('google-maps-script')) {
+        const script = document.createElement('script');
+        script.id = 'google-maps-script';
+        script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places,marker`;
+        script.async = true;
+        script.defer = true;
+        document.body.appendChild(script);
+    } else if (!apiKey) {
+        console.warn("VITE_GOOGLE_MAPS_API_KEY is missing in environment variables.");
+    }
+  }, []);
+
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       if (currentUser) {
@@ -40,10 +57,8 @@ const App: React.FC = () => {
             getDoc(userDocRef)
             ]);
 
-            // 1. KIỂM TRA TÀI KHOẢN CÒN TỒN TẠI KHÔNG (Đã bị xóa chưa)
+            // 1. KIỂM TRA TÀI KHOẢN CÒN TẠI KHÔNG (Đã bị xóa chưa)
             if (!roleDocSnap.exists()) {
-                // If it's a manual deletion during session, we can keep alert or rely on logic
-                // For login, LoginPage handles it. For session persistence check:
                 await signOut(auth);
                 setUser(null);
                 setUserRole(null);
@@ -55,8 +70,6 @@ const App: React.FC = () => {
             if (userDocSnap.exists()) {
                 const userData = userDocSnap.data();
                 if (userData.status === UserStatus.Locked) {
-                    // Alert removed here so LoginPage can show it in the UI.
-                    // If user was already logged in and gets locked, they will just be logged out.
                     await signOut(auth);
                     setUser(null);
                     setUserRole(null);
