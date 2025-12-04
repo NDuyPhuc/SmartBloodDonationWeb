@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import Sidebar from './components/Sidebar';
 import Header from './components/Header';
@@ -28,19 +29,23 @@ const App: React.FC = () => {
 
   // Load Google Maps Script Dynamically
   useEffect(() => {
-    // Fix: Property 'env' does not exist on type 'ImportMeta'
-    // Use optional chaining to avoid crash if env is undefined
-    const apiKey = (import.meta as any)?.env?.VITE_GOOGLE_MAPS_API_KEY;
+    // Sử dụng Optional Chaining để tránh lỗi undefined
+    const envApiKey = (import.meta as any)?.env?.VITE_GOOGLE_MAPS_API_KEY;
+    
+    // FALLBACK KEY: Sử dụng key này nếu biến môi trường không tồn tại (fix lỗi Vercel)
+    const fallbackApiKey = "AIzaSyBdf3qEHerho4yhseDl3vf-06ZHUcub-rI";
+    
+    const apiKey = envApiKey || fallbackApiKey;
     
     if (apiKey && !document.getElementById('google-maps-script')) {
         const script = document.createElement('script');
         script.id = 'google-maps-script';
-        script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places,marker`;
+        script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places,marker&loading=async`;
         script.async = true;
         script.defer = true;
         document.body.appendChild(script);
     } else if (!apiKey) {
-        console.warn("VITE_GOOGLE_MAPS_API_KEY is missing in environment variables.");
+        console.error("CRITICAL: Google Maps API Key is missing everywhere!");
     }
   }, []);
 
