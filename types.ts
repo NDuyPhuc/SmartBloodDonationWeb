@@ -1,3 +1,4 @@
+
 export enum UserRole {
   Admin = 'Quản trị viên',
   Hospital = 'Bệnh viện',
@@ -15,6 +16,7 @@ export enum Page {
   ManageHospitals = 'Quản lý Bệnh viện',
   ManageUsers = 'Quản lý Người dùng',
   ManageEmergencyRequests = 'Quản lý Yêu cầu khẩn cấp',
+  AdminMap = 'Bản đồ Bệnh viện',
 }
 
 export enum AppointmentStatus {
@@ -119,6 +121,11 @@ export interface Hospital {
     licenseUrl: string;
     status: HospitalStatus;
     loginStatus?: UserStatus;
+    location?: {
+        lat: number;
+        lng: number;
+    };
+    inventory?: Record<string, number>; // Stores blood type counts: { "A+": 10, "B-": 5 }
 }
 
 export interface User {

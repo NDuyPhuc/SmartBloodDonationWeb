@@ -76,18 +76,18 @@ const AppointmentManagement: React.FC = () => {
 
   const getStatusColor = (status: AppointmentStatus) => {
     switch (status) {
-      case AppointmentStatus.Confirmed: return 'bg-green-100 text-green-800';
-      case AppointmentStatus.Pending: return 'bg-yellow-100 text-yellow-800';
-      case AppointmentStatus.Cancelled: return 'bg-red-100 text-red-800';
-      case AppointmentStatus.Completed: return 'bg-blue-100 text-blue-800';
-      default: return 'bg-gray-100 text-gray-800';
+      case AppointmentStatus.Confirmed: return 'bg-green-100 text-green-700 ring-1 ring-green-600/20';
+      case AppointmentStatus.Pending: return 'bg-yellow-50 text-yellow-700 ring-1 ring-yellow-600/20';
+      case AppointmentStatus.Cancelled: return 'bg-red-50 text-red-700 ring-1 ring-red-600/20';
+      case AppointmentStatus.Completed: return 'bg-blue-50 text-blue-700 ring-1 ring-blue-600/20';
+      default: return 'bg-gray-50 text-gray-600 ring-1 ring-gray-500/10';
     }
   };
   
   const formatDate = (timestamp: { seconds: number; nanoseconds: number; }) => {
     if (!timestamp?.seconds) return 'N/A';
     const date = new Date(timestamp.seconds * 1000);
-    return `${date.toLocaleDateString('vi-VN')} lúc ${date.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}`;
+    return `${date.toLocaleDateString('vi-VN')} - ${date.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}`;
   }
 
   const filteredAppointments = appointments.filter(
@@ -95,32 +95,40 @@ const AppointmentManagement: React.FC = () => {
   );
 
   return (
-    <div className="p-4 md:p-8">
-      <h1 className="text-2xl md:text-3xl font-bold text-gray-800 mb-6">Quản lý Lịch hẹn</h1>
-
-      <div className="mb-6 flex items-center space-x-4">
-        <label htmlFor="status-filter" className="font-medium text-gray-700 text-sm md:text-base">Lọc:</label>
-        <select
-          id="status-filter"
-          value={filter}
-          onChange={(e) => setFilter(e.target.value as AppointmentStatus | 'All')}
-          className="p-2 border border-gray-300 rounded-md shadow-sm focus:ring-red-500 focus:border-red-500"
-        >
-          <option value="All">Tất cả</option>
-          {Object.values(AppointmentStatus).map(status => (
-            <option key={status} value={status}>{status}</option>
-          ))}
-        </select>
+    <div className="p-4 md:p-8 max-w-7xl mx-auto">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+          <h1 className="text-2xl md:text-3xl font-bold text-gray-800">Quản lý Lịch hẹn</h1>
+          
+          <div className="flex items-center space-x-2 bg-white p-1.5 rounded-lg border border-gray-200 shadow-sm">
+            <label htmlFor="status-filter" className="text-sm font-medium text-gray-500 pl-2">Lọc theo:</label>
+            <select
+              id="status-filter"
+              value={filter}
+              onChange={(e) => setFilter(e.target.value as AppointmentStatus | 'All')}
+              className="p-1.5 text-sm border-none bg-gray-50 rounded-md focus:ring-2 focus:ring-red-500 text-gray-700 font-medium cursor-pointer hover:bg-gray-100 transition-colors"
+            >
+              <option value="All">Tất cả trạng thái</option>
+              {Object.values(AppointmentStatus).map(status => (
+                <option key={status} value={status}>{status}</option>
+              ))}
+            </select>
+          </div>
       </div>
       
-      {loading && <p className="text-center py-4">Đang tải dữ liệu...</p>}
+      {loading && (
+           <div className="flex justify-center items-center py-20">
+               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-red-500"></div>
+           </div>
+      )}
 
       {!loading && filteredAppointments.length === 0 && (
-         <div className="text-center py-16 bg-white rounded-lg shadow-md">
-            <CalendarIcon className="mx-auto h-12 w-12 text-gray-400" />
-            <h3 className="mt-2 text-lg font-medium text-gray-900">Không có lịch hẹn</h3>
-            <p className="mt-1 text-sm text-gray-500">
-                {filter === 'All' ? 'Hiện tại chưa có lịch hẹn nào được tìm thấy.' : 'Không có lịch hẹn nào khớp với bộ lọc của bạn.'}
+         <div className="text-center py-20 bg-white rounded-xl shadow-sm border border-gray-100 dashed-border">
+            <div className="bg-gray-50 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+                <CalendarIcon className="h-8 w-8 text-gray-400" />
+            </div>
+            <h3 className="text-lg font-semibold text-gray-900">Không tìm thấy lịch hẹn</h3>
+            <p className="mt-1 text-sm text-gray-500 max-w-sm mx-auto">
+                {filter === 'All' ? 'Hiện tại danh sách lịch hẹn đang trống.' : `Không có lịch hẹn nào ở trạng thái "${filter}".`}
             </p>
         </div>
       )}
@@ -128,21 +136,28 @@ const AppointmentManagement: React.FC = () => {
       {/* Mobile Card View */}
       <div className="md:hidden space-y-4">
         {filteredAppointments.map(app => (
-            <div key={app.id} className="bg-white rounded-lg shadow-md p-4 space-y-3">
+            <div key={app.id} className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 space-y-3">
                 <div className="flex justify-between items-start">
                     <div>
-                        <p className="font-bold text-gray-800">{app.donorName}</p>
-                        <p className="text-sm text-gray-600">Nhóm máu: <strong>{app.bloodType || 'N/A'}</strong></p>
+                        <p className="font-bold text-gray-800 text-lg">{app.donorName}</p>
+                        <div className="flex items-center mt-1">
+                             <span className="text-xs font-semibold text-gray-500 uppercase mr-1">Nhóm máu:</span>
+                             <span className="bg-red-50 text-red-700 px-2 py-0.5 rounded text-xs font-bold">{app.bloodType || 'N/A'}</span>
+                        </div>
                     </div>
-                    <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(app.status)}`}>
+                    <span className={`px-2.5 py-1 text-xs font-semibold rounded-full ${getStatusColor(app.status)}`}>
                         {app.status}
                     </span>
                 </div>
-                <p className="text-sm text-gray-600"><strong>Ngày hẹn:</strong> {formatDate(app.dateTime)}</p>
+                <div className="flex items-center text-sm text-gray-600 bg-gray-50 p-2 rounded-lg">
+                    <CalendarIcon className="w-4 h-4 mr-2 text-gray-400" />
+                    <strong>{formatDate(app.dateTime)}</strong>
+                </div>
+                
                 {app.status === AppointmentStatus.Pending && (
-                    <div className="flex justify-end space-x-2 pt-2 border-t mt-2">
-                        <button onClick={() => updateAppointmentStatus(app.id, AppointmentStatus.Confirmed)} className="text-green-600 hover:text-green-900 font-semibold transition">Xác nhận</button>
-                        <button onClick={() => updateAppointmentStatus(app.id, AppointmentStatus.Cancelled)} className="text-red-600 hover:text-red-900 font-semibold transition">Hủy</button>
+                    <div className="flex space-x-3 pt-3 mt-1">
+                        <button onClick={() => updateAppointmentStatus(app.id, AppointmentStatus.Confirmed)} className="flex-1 bg-green-50 text-green-700 py-2 rounded-lg text-sm font-semibold hover:bg-green-100 transition">Xác nhận</button>
+                        <button onClick={() => updateAppointmentStatus(app.id, AppointmentStatus.Cancelled)} className="flex-1 bg-red-50 text-red-700 py-2 rounded-lg text-sm font-semibold hover:bg-red-100 transition">Hủy</button>
                     </div>
                 )}
             </div>
@@ -150,35 +165,44 @@ const AppointmentManagement: React.FC = () => {
       </div>
 
       {/* Desktop Table View */}
-      <div className="hidden md:block bg-white rounded-lg shadow-md overflow-hidden">
+      <div className="hidden md:block bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tên người hiến</th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nhóm máu</th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ngày & Giờ</th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Trạng thái</th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Hành động</th>
+            <thead>
+              <tr className="bg-gray-50/80">
+                <th scope="col" className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Tên người hiến</th>
+                <th scope="col" className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Nhóm máu</th>
+                <th scope="col" className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Ngày & Giờ</th>
+                <th scope="col" className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Trạng thái</th>
+                <th scope="col" className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Hành động</th>
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
+            <tbody className="bg-white divide-y divide-gray-100">
                 {filteredAppointments.map((app) => (
-                  <tr key={app.id}>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{app.donorName}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{app.bloodType || 'N/A'}</td>
+                  <tr key={app.id} className="hover:bg-gray-50/80 transition-colors">
+                    <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="font-medium text-gray-900">{app.donorName}</div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-50 text-red-800">
+                            {app.bloodType || 'N/A'}
+                        </span>
+                    </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{formatDate(app.dateTime)}</td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(app.status)}`}>
+                      <span className={`px-2.5 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(app.status)}`}>
                         {app.status}
                       </span>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
-                      {app.status === AppointmentStatus.Pending && (
-                          <>
-                          <button onClick={() => updateAppointmentStatus(app.id, AppointmentStatus.Confirmed)} className="text-green-600 hover:text-green-900 transition">Xác nhận</button>
-                          <button onClick={() => updateAppointmentStatus(app.id, AppointmentStatus.Cancelled)} className="text-red-600 hover:text-red-900 transition">Hủy</button>
-                          </>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                      {app.status === AppointmentStatus.Pending ? (
+                          <div className="flex space-x-3">
+                            <button onClick={() => updateAppointmentStatus(app.id, AppointmentStatus.Confirmed)} className="text-green-600 hover:text-green-900 font-semibold text-xs uppercase tracking-wide transition-colors">Xác nhận</button>
+                            <span className="text-gray-300">|</span>
+                            <button onClick={() => updateAppointmentStatus(app.id, AppointmentStatus.Cancelled)} className="text-red-600 hover:text-red-900 font-semibold text-xs uppercase tracking-wide transition-colors">Hủy</button>
+                          </div>
+                      ) : (
+                          <span className="text-gray-400 text-xs italic">Đã xử lý</span>
                       )}
                     </td>
                   </tr>

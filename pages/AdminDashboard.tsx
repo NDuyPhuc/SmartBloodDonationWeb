@@ -62,14 +62,26 @@ const AdminDashboard: React.FC = () => {
       </div>
        <div className="bg-white p-6 rounded-lg shadow-md">
          <h2 className="text-xl font-semibold text-gray-700 mb-4">Chào mừng Quản trị viên!</h2>
-         <p className="text-gray-600">
-           Đây là khu vực quản lý trung tâm của hệ thống Smart Blood Donation.
-           Bạn có thể sử dụng các công cụ điều hướng bên trái để:
+         <p className="text-gray-600 mb-6">
+           Đây là hệ thống quản lý trung tâm của Smart Blood Donation. Với vai trò Quản trị viên, bạn có toàn quyền kiểm soát và giám sát hoạt động của nền tảng:
          </p>
-         <ul className="list-disc list-inside mt-4 text-gray-600 space-y-2">
-           <li><strong>Quản lý Bệnh viện:</strong> Phê duyệt các bệnh viện mới đăng ký và quản lý các bệnh viện hiện có.</li>
-           <li><strong>Quản lý Người dùng:</strong> Giám sát hoạt động của người hiến máu và quản lý tài khoản của họ.</li>
-         </ul>
+         
+         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+                <h3 className="font-bold text-gray-800 mb-2 border-b pb-1">Quản lý Đối tác & Người dùng</h3>
+                <ul className="list-disc list-inside text-gray-600 space-y-2 text-sm md:text-base">
+                    <li><strong>Quản lý Bệnh viện:</strong> Phê duyệt hồ sơ đăng ký mới, khóa/mở khóa tài khoản và quản lý thông tin các bệnh viện đối tác.</li>
+                    <li><strong>Quản lý Người dùng:</strong> Tra cứu danh sách người hiến máu, xem lịch sử hiến tặng và kiểm soát quyền truy cập của người dùng.</li>
+                </ul>
+            </div>
+            <div>
+                <h3 className="font-bold text-gray-800 mb-2 border-b pb-1">Giám sát Hoạt động</h3>
+                <ul className="list-disc list-inside text-gray-600 space-y-2 text-sm md:text-base">
+                    <li><strong>Quản lý Yêu cầu khẩn cấp:</strong> Theo dõi toàn bộ các yêu cầu gọi máu khẩn cấp đang diễn ra trên hệ thống để đảm bảo tính minh bạch và kịp thời.</li>
+                    <li><strong>Bản đồ Bệnh viện:</strong> Quan sát trực quan vị trí các bệnh viện trên bản đồ và thống kê mức độ bận rộn (số lượng lịch hẹn) tại từng điểm.</li>
+                </ul>
+            </div>
+         </div>
        </div>
     </div>
   );

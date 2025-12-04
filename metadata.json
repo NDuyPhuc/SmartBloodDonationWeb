@@ -1,5 +1,7 @@
 {
   "name": "Cổng thông tin Bệnh viện - Smart Blood Donation",
   "description": "Một bảng điều khiển web toàn diện cho các bệnh viện để quản lý lịch hẹn hiến máu, xử lý các yêu cầu máu khẩn cấp và tương tác với một trợ lý AI cho các yêu cầu về hiến máu.",
-  "requestFramePermissions": []
+  "requestFramePermissions": [
+    "geolocation"
+  ]
 }

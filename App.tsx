@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import Sidebar from './components/Sidebar';
 import Header from './components/Header';
@@ -9,10 +10,11 @@ import AdminDashboard from './pages/AdminDashboard';
 import HospitalManagement from './pages/HospitalManagement';
 import UserManagement from './pages/UserManagement';
 import AdminEmergencyRequestManagement from './pages/AdminEmergencyRequestManagement';
+import AdminMap from './pages/AdminMap';
 import LoginPage from './pages/LoginPage';
-import { Page, UserRole } from './types';
+import { Page, UserRole, UserStatus } from './types';
 import { auth, db } from './firebase';
-import { onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
+import { onAuthStateChanged, User as FirebaseUser, signOut } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
 import { HeartIcon } from '@heroicons/react/24/solid';
 import HospitalManageEmergency from './pages/HospitalManageEmergency';
@@ -26,35 +28,58 @@ const App: React.FC = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      if (user) {
-        setUser(user);
-        
-        // Fetch user role and name from Firestore
-        const roleDocRef = doc(db, 'user_roles', user.uid);
-        const userDocRef = doc(db, 'users', user.uid);
+    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
+      if (currentUser) {
+        try {
+            // Fetch user role and name from Firestore
+            const roleDocRef = doc(db, 'user_roles', currentUser.uid);
+            const userDocRef = doc(db, 'users', currentUser.uid);
 
-        const [roleDocSnap, userDocSnap] = await Promise.all([
-          getDoc(roleDocRef),
-          getDoc(userDocRef)
-        ]);
+            const [roleDocSnap, userDocSnap] = await Promise.all([
+            getDoc(roleDocRef),
+            getDoc(userDocRef)
+            ]);
 
-        if (roleDocSnap.exists()) {
-          const role = roleDocSnap.data().role as UserRole;
-          setUserRole(role);
-          setActivePage(role === UserRole.Admin ? Page.AdminDashboard : Page.Dashboard);
-        } else {
-          console.error("No role document found for user!");
-          setUserRole(null); // No role, treat as unauthenticated
+            // 1. KIỂM TRA TÀI KHOẢN CÒN TỒN TẠI KHÔNG (Đã bị xóa chưa)
+            if (!roleDocSnap.exists()) {
+                // If it's a manual deletion during session, we can keep alert or rely on logic
+                // For login, LoginPage handles it. For session persistence check:
+                await signOut(auth);
+                setUser(null);
+                setUserRole(null);
+                setLoading(false);
+                return;
+            }
+
+            // 2. KIỂM TRA TRẠNG THÁI KHÓA (UserStatus.Locked)
+            if (userDocSnap.exists()) {
+                const userData = userDocSnap.data();
+                if (userData.status === UserStatus.Locked) {
+                    // Alert removed here so LoginPage can show it in the UI.
+                    // If user was already logged in and gets locked, they will just be logged out.
+                    await signOut(auth);
+                    setUser(null);
+                    setUserRole(null);
+                    setLoading(false);
+                    return;
+                }
+                setUserName(userData.fullName || 'Không rõ');
+            } else {
+                setUserName('Không rõ');
+            }
+
+            // Nếu vượt qua các bài kiểm tra trên, thiết lập state đăng nhập thành công
+            const role = roleDocSnap.data().role as UserRole;
+            setUser(currentUser);
+            setUserRole(role);
+            setActivePage(role === UserRole.Admin ? Page.AdminDashboard : Page.Dashboard);
+
+        } catch (error) {
+            console.error("Error fetching user data:", error);
+            // Fallback an toàn nếu lỗi mạng hoặc lỗi khác
+            setUser(null);
+            setUserRole(null);
         }
-
-        if (userDocSnap.exists()) {
-          setUserName(userDocSnap.data().fullName || 'Không rõ');
-        } else {
-          console.log("No user document found, this might be okay for some user types.");
-          setUserName('Không rõ');
-        }
-
       } else {
         setUser(null);
         setUserRole(null);
@@ -95,6 +120,7 @@ const App: React.FC = () => {
             case Page.ManageHospitals: return <HospitalManagement />;
             case Page.ManageUsers: return <UserManagement />;
             case Page.ManageEmergencyRequests: return <AdminEmergencyRequestManagement />;
+            case Page.AdminMap: return <AdminMap />;
             default: return <AdminDashboard />;
         }
     }

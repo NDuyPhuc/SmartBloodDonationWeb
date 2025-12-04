@@ -1,5 +1,6 @@
+
 import { Page } from './types';
-import { DashboardIcon, CalendarIcon, MegaphoneIcon, ChatBubbleIcon, UsersIcon, BuildingOfficeIcon } from './components/icons/Icons';
+import { DashboardIcon, CalendarIcon, MegaphoneIcon, ChatBubbleIcon, UsersIcon, BuildingOfficeIcon, MapIcon } from './components/icons/Icons';
 
 export const HOSPITAL_SIDEBAR_LINKS = [
   { name: Page.Dashboard, icon: DashboardIcon },
@@ -14,6 +15,7 @@ export const ADMIN_SIDEBAR_LINKS = [
     { name: Page.ManageHospitals, icon: BuildingOfficeIcon },
     { name: Page.ManageUsers, icon: UsersIcon },
     { name: Page.ManageEmergencyRequests, icon: MegaphoneIcon },
+    { name: Page.AdminMap, icon: MapIcon },
 ];
 
 // Mock data has been removed and the app now connects to Firebase.
