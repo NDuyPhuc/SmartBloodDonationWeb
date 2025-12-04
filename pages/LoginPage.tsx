@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { HeartIcon, MapPinIcon, CheckBadgeIcon } from '@heroicons/react/24/solid';
 import { auth, db } from '../firebase';
@@ -6,7 +5,28 @@ import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut } f
 import { UserRole, HospitalStatus, UserStatus } from '../types';
 import Modal from '../components/Modal';
 import { doc, writeBatch, getDoc } from 'firebase/firestore';
+import { MapContainer, TileLayer, useMapEvents } from 'react-leaflet';
 
+// Component to handle map center updates
+const MapController = ({ onCenterChange }: { onCenterChange: (lat: number, lng: number) => void }) => {
+    const map = useMapEvents({
+        moveend: () => {
+            const center = map.getCenter();
+            onCenterChange(center.lat, center.lng);
+        },
+        // Setup initial user location
+        locationfound(e) {
+            map.flyTo(e.latlng, 15);
+            onCenterChange(e.latlng.lat, e.latlng.lng);
+        },
+    });
+
+    useEffect(() => {
+        map.locate();
+    }, [map]);
+
+    return null;
+};
 
 const LoginPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<UserRole>(UserRole.Hospital);
@@ -29,13 +49,9 @@ const LoginPage: React.FC = () => {
     lng: 106.660172, // Default Lng (HCMC)
   });
 
-  // Map refs
-  const mapRef = useRef<HTMLDivElement>(null);
-  const googleMapRef = useRef<any>(null);
-
   const handleTabClick = (tab: UserRole) => {
     setActiveTab(tab);
-    setError(null); // Clear error on tab switch
+    setError(null);
   };
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -46,21 +62,18 @@ const LoginPage: React.FC = () => {
     try {
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       
-      // Check user status explicitly before App.tsx redirect logic kicks in
       const userDocRef = doc(db, 'users', userCredential.user.uid);
       const userDocSnap = await getDoc(userDocRef);
       
       if (userDocSnap.exists()) {
           const userData = userDocSnap.data();
           if (userData.status === UserStatus.Locked) {
-              await signOut(auth); // Force sign out immediately
+              await signOut(auth);
               setError("Tài khoản của bạn đã bị khóa. Vui lòng liên hệ quản trị viên để biết thêm chi tiết.");
               setLoading(false);
               return;
           }
       }
-      
-      // If status is OK, App.tsx onAuthStateChanged will handle the rest
     } catch (err: any) {
         setLoading(false);
         switch (err.code) {
@@ -78,52 +91,6 @@ const LoginPage: React.FC = () => {
         }
     }
   };
-
-  // Initialize Map when Register Modal Opens
-  useEffect(() => {
-    if (isRegisterModalOpen && mapRef.current && typeof (window as any).google !== 'undefined') {
-        const defaultLocation = { lat: newHospital.lat, lng: newHospital.lng };
-        
-        // Init Map with Map ID for Advanced Markers
-        googleMapRef.current = new (window as any).google.maps.Map(mapRef.current, {
-            center: defaultLocation,
-            zoom: 15,
-            mapId: "DEMO_MAP_ID", // Required for AdvancedMarkerElement
-            disableDefaultUI: false,
-            streetViewControl: false,
-            mapTypeControl: false,
-        });
-
-        // Try to get user location
-        if (navigator.geolocation) {
-            navigator.geolocation.getCurrentPosition(
-                (position) => {
-                    const userPos = {
-                        lat: position.coords.latitude,
-                        lng: position.coords.longitude,
-                    };
-                    googleMapRef.current.setCenter(userPos);
-                    setNewHospital(prev => ({ ...prev, lat: userPos.lat, lng: userPos.lng }));
-                },
-                () => {
-                    console.log("Error: The Geolocation service failed.");
-                }
-            );
-        }
-
-        // Listen for center_changed event to update coordinates
-        googleMapRef.current.addListener('center_changed', () => {
-            const center = googleMapRef.current.getCenter();
-            if (center) {
-                setNewHospital(prev => ({
-                    ...prev,
-                    lat: center.lat(),
-                    lng: center.lng()
-                }));
-            }
-        });
-    }
-  }, [isRegisterModalOpen]);
 
   const handleRegisterHospital = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -148,24 +115,21 @@ const LoginPage: React.FC = () => {
         
         const batch = writeBatch(db);
         
-        // 1. Create Hospital Document
         const hospitalRef = doc(db, 'hospitals', uid);
         batch.set(hospitalRef, { 
             name: newHospital.name, 
             address: newHospital.address, 
             licenseUrl: newHospital.licenseUrl, 
-            status: HospitalStatus.Pending, // Default to Pending for self-registration
+            status: HospitalStatus.Pending,
             location: {
                 lat: newHospital.lat,
                 lng: newHospital.lng
             }
         });
 
-        // 2. Set User Role
         const roleRef = doc(db, 'user_roles', uid);
         batch.set(roleRef, { role: UserRole.Hospital });
 
-        // 3. Create User Profile
         const userRef = doc(db, 'users', uid);
         batch.set(userRef, {
             uid: uid,
@@ -177,7 +141,6 @@ const LoginPage: React.FC = () => {
 
         await batch.commit();
         
-        // Success - Firebase Auth automatically logs the user in
         setIsRegisterModalOpen(false);
         setNewHospital({
             name: '', address: '', email: '', password: '', licenseUrl: '', 
@@ -199,14 +162,17 @@ const LoginPage: React.FC = () => {
     }
   };
 
+  const onMapCenterChange = (lat: number, lng: number) => {
+      setNewHospital(prev => ({...prev, lat, lng}));
+  }
+
   return (
     <div className="flex min-h-screen bg-white">
-      {/* Left Side - Illustration / Branding */}
+      {/* Left Side - Illustration */}
       <div className="hidden lg:flex lg:w-1/2 relative bg-red-600 overflow-hidden flex-col justify-between p-12 text-white">
          <div className="absolute inset-0 bg-gradient-to-br from-red-700 to-red-500 opacity-90"></div>
          <div className="absolute inset-0" style={{ backgroundImage: 'radial-gradient(circle at 2px 2px, rgba(255,255,255,0.15) 1px, transparent 0)', backgroundSize: '30px 30px' }}></div>
          
-         {/* Decorative Circles */}
          <div className="absolute top-[-10%] right-[-10%] w-96 h-96 rounded-full bg-white opacity-10 blur-3xl animate-pulse"></div>
          <div className="absolute bottom-[-10%] left-[-10%] w-80 h-80 rounded-full bg-red-900 opacity-20 blur-3xl"></div>
 
@@ -239,7 +205,7 @@ const LoginPage: React.FC = () => {
          </div>
       </div>
 
-      {/* Right Side - Login Form - Added z-10 to ensure it's on top of background layers */}
+      {/* Right Side - Login Form */}
       <div className="w-full lg:w-1/2 flex items-center justify-center p-6 sm:p-12 lg:p-16 relative bg-gray-50/50 z-10">
          <div className="w-full max-w-md space-y-8 bg-white p-8 sm:p-10 rounded-2xl shadow-xl lg:shadow-none lg:bg-transparent animate-fade-in-up delay-100 relative">
             <div className="text-center lg:text-left">
@@ -339,7 +305,7 @@ const LoginPage: React.FC = () => {
                         <div className="relative flex justify-center">
                             <span className="px-3 bg-white text-sm font-medium text-gray-400">Chưa có tài khoản?</span>
                         </div>
-                        <div className="mt-5 relative z-20"> {/* Added z-20 to the button wrapper */}
+                        <div className="mt-5 relative z-20">
                              <button
                                 type="button"
                                 onClick={() => setIsRegisterModalOpen(true)}
@@ -355,7 +321,6 @@ const LoginPage: React.FC = () => {
       </div>
 
       <Modal isOpen={isRegisterModalOpen} onClose={() => setIsRegisterModalOpen(false)} title="Đăng ký Bệnh viện">
-        {/* IMPORTANT: Removed max-h constraint on form to allow full scrolling within Modal body */}
         <form onSubmit={handleRegisterHospital} className="space-y-5">
             <div className="bg-blue-50 border-l-4 border-blue-400 p-4 rounded-r-lg">
                 <div className="flex">
@@ -376,13 +341,25 @@ const LoginPage: React.FC = () => {
                     <input type="text" id="reg-name" value={newHospital.name} onChange={e => setNewHospital({...newHospital, name: e.target.value})} className="block w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 sm:text-sm" required placeholder="VD: Bệnh viện Chợ Rẫy" />
                 </div>
 
-                 {/* Google Map Section */}
+                 {/* Leaflet Map Section */}
                  <div className="md:col-span-2">
                      <label className="block text-sm font-semibold text-gray-700 mb-2">Vị trí (Kéo bản đồ để ghim chính xác)</label>
-                     <div className="relative h-64 w-full rounded-xl overflow-hidden border border-gray-300 shadow-sm group">
-                         <div ref={mapRef} className="h-full w-full" />
+                     <div className="relative h-64 w-full rounded-xl overflow-hidden border border-gray-300 shadow-sm group bg-gray-100 z-0">
+                         <MapContainer
+                            center={[newHospital.lat, newHospital.lng]}
+                            zoom={15}
+                            style={{ height: '100%', width: '100%' }}
+                            scrollWheelZoom={true}
+                         >
+                            <TileLayer
+                                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                            />
+                            <MapController onCenterChange={onMapCenterChange} />
+                         </MapContainer>
+                         
                          {/* Center Marker Overlay */}
-                         <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-full pointer-events-none text-red-600 filter drop-shadow-md z-10 transition-transform duration-200 group-hover:-translate-y-[110%]">
+                         <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-full pointer-events-none text-red-600 filter drop-shadow-md z-[1000]">
                              <MapPinIcon className="w-10 h-10" />
                          </div>
                      </div>
@@ -413,8 +390,8 @@ const LoginPage: React.FC = () => {
 
             {registerError && <p className="text-sm text-red-600 bg-red-50 p-3 rounded-lg border border-red-200 font-medium">{registerError}</p>}
 
-            <div className="pt-6 flex justify-end space-x-3 border-t border-gray-100 mt-4 sticky bottom-0 bg-white pb-2">
-                <button type="button" onClick={() => setIsRegisterModalOpen(false)} className="px-5 py-2.5 border border-gray-300 rounded-lg shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-colors">
+            <div className="pt-6 flex justify-end space-x-3 border-t border-gray-100 mt-4 sticky bottom-0 bg-white pb-2 z-10">
+                <button type="button" onClick={() => setIsRegisterModalOpen(false)} className="px-5 py-2.5 border border-gray-300 rounded-lg shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 hover:text-red-600 hover:border-red-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors">
                     Hủy
                 </button>
                 <button type="submit" disabled={registerLoading} className="inline-flex justify-center px-6 py-2.5 border border-transparent shadow-sm text-sm font-bold rounded-lg text-white bg-red-600 hover:bg-red-700 hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:bg-red-300 disabled:shadow-none disabled:cursor-not-allowed transition-all transform hover:-translate-y-0.5">

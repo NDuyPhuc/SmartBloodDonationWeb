@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { Hospital, HospitalStatus, UserRole, UserStatus, AppointmentStatus, RequestStatus } from '../types';
 import { db, auth } from '../firebase';
@@ -7,7 +6,27 @@ import { createUserWithEmailAndPassword } from 'firebase/auth';
 import Modal from '../components/Modal';
 import { MapPinIcon } from '@heroicons/react/24/solid';
 import { TrashIcon, BuildingOfficeIcon } from '../components/icons/Icons';
+import { MapContainer, TileLayer, useMapEvents } from 'react-leaflet';
 
+// Component to handle map center updates
+const MapController = ({ onCenterChange }: { onCenterChange: (lat: number, lng: number) => void }) => {
+    const map = useMapEvents({
+        moveend: () => {
+            const center = map.getCenter();
+            onCenterChange(center.lat, center.lng);
+        },
+        locationfound(e) {
+            map.flyTo(e.latlng, 15);
+            onCenterChange(e.latlng.lat, e.latlng.lng);
+        },
+    });
+
+    useEffect(() => {
+        map.locate();
+    }, [map]);
+
+    return null;
+};
 
 const HospitalManagement: React.FC = () => {
   const [hospitals, setHospitals] = useState<Hospital[]>([]);
@@ -32,10 +51,6 @@ const HospitalManagement: React.FC = () => {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [hospitalToDelete, setHospitalToDelete] = useState<Hospital | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
-
-  // Map refs
-  const mapRef = useRef<HTMLDivElement>(null);
-  const googleMapRef = useRef<any>(null);
 
   useEffect(() => {
     const unsubHospitals = onSnapshot(collection(db, 'hospitals'), (hospitalSnapshot) => {
@@ -64,51 +79,6 @@ const HospitalManagement: React.FC = () => {
 
     return () => unsubHospitals();
   }, []);
-
-  // Initialize Map when Modal Opens
-  useEffect(() => {
-    if (isRegisterModalOpen && mapRef.current && typeof (window as any).google !== 'undefined') {
-        const defaultLocation = { lat: newHospital.lat, lng: newHospital.lng };
-        
-        googleMapRef.current = new (window as any).google.maps.Map(mapRef.current, {
-            center: defaultLocation,
-            zoom: 15,
-            mapId: "DEMO_MAP_ID", // Required for AdvancedMarkerElement
-            disableDefaultUI: false,
-            streetViewControl: false,
-            mapTypeControl: false,
-        });
-
-        // Try to get user location
-        if (navigator.geolocation) {
-            navigator.geolocation.getCurrentPosition(
-                (position) => {
-                    const userPos = {
-                        lat: position.coords.latitude,
-                        lng: position.coords.longitude,
-                    };
-                    googleMapRef.current.setCenter(userPos);
-                    setNewHospital(prev => ({ ...prev, lat: userPos.lat, lng: userPos.lng }));
-                },
-                () => {
-                    console.log("Error: The Geolocation service failed.");
-                }
-            );
-        }
-
-        // Listen for center_changed event to update coordinates
-        googleMapRef.current.addListener('center_changed', () => {
-            const center = googleMapRef.current.getCenter();
-            if (center) {
-                setNewHospital(prev => ({
-                    ...prev,
-                    lat: center.lat(),
-                    lng: center.lng()
-                }));
-            }
-        });
-    }
-  }, [isRegisterModalOpen]);
 
   const updateHospitalStatus = async (id: string, status: HospitalStatus) => {
     const hospitalRef = doc(db, 'hospitals', id);
@@ -141,13 +111,10 @@ const HospitalManagement: React.FC = () => {
     setDeleteLoading(true);
     try {
         const batch = writeBatch(db);
-
-        // 1. Delete Hospital Entity, Role and User Profile
         batch.delete(doc(db, 'hospitals', hospitalToDelete.id));
         batch.delete(doc(db, 'user_roles', hospitalToDelete.id));
         batch.delete(doc(db, 'users', hospitalToDelete.id));
 
-        // 2. Query and Update Related Appointments
         const appointmentsQuery = query(collection(db, 'appointments'), where('hospitalId', '==', hospitalToDelete.id));
         const appointmentDocs = await getDocs(appointmentsQuery);
         
@@ -156,22 +123,19 @@ const HospitalManagement: React.FC = () => {
             const updates: any = {
                 hospitalName: `${hospitalToDelete.name} (Không còn hoạt động)`
             };
-            
             if (appData.status === AppointmentStatus.Pending) {
                 updates.status = AppointmentStatus.Cancelled;
             }
-            
             batch.update(appDoc.ref, updates);
         });
 
-        // 3. Query and Update Related Blood Requests
         const requestsQuery = query(collection(db, 'blood_requests'), where('hospitalId', '==', hospitalToDelete.id));
         const requestDocs = await getDocs(requestsQuery);
 
         requestDocs.forEach((reqDoc) => {
             batch.update(reqDoc.ref, {
                 hospitalName: `${hospitalToDelete.name} (Không còn hoạt động)`,
-                status: RequestStatus.Completed // Close active requests
+                status: RequestStatus.Completed
             });
         });
 
@@ -249,6 +213,10 @@ const HospitalManagement: React.FC = () => {
         setRegisterLoading(false);
     }
   };
+
+  const onMapCenterChange = (lat: number, lng: number) => {
+      setNewHospital(prev => ({...prev, lat, lng}));
+  }
 
   const getStatusColor = (status: HospitalStatus) => {
     switch (status) {
@@ -466,13 +434,25 @@ const HospitalManagement: React.FC = () => {
                 <input type="text" id="hospitalName" value={newHospital.name} onChange={e => setNewHospital({...newHospital, name: e.target.value})} className="mt-1 focus:ring-red-500 focus:border-red-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-lg py-2.5 px-3" required placeholder="Nhập tên bệnh viện..." />
             </div>
             
-            {/* Google Map Section */}
+            {/* Leaflet Map Section */}
             <div>
                  <label className="block text-sm font-semibold text-gray-700 mb-2">Vị trí địa lý (Kéo bản đồ để chọn)</label>
-                 <div className="relative h-64 w-full rounded-lg overflow-hidden border border-gray-300 shadow-inner">
-                     <div ref={mapRef} className="h-full w-full" />
+                 <div className="relative h-64 w-full rounded-lg overflow-hidden border border-gray-300 shadow-inner bg-gray-100 z-0">
+                     <MapContainer
+                        center={[newHospital.lat, newHospital.lng]}
+                        zoom={15}
+                        style={{ height: '100%', width: '100%' }}
+                        scrollWheelZoom={true}
+                     >
+                        <TileLayer
+                            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                        />
+                        <MapController onCenterChange={onMapCenterChange} />
+                     </MapContainer>
+                     
                      {/* Center Marker Overlay */}
-                     <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-full pointer-events-none text-red-600 drop-shadow-md">
+                     <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-full pointer-events-none text-red-600 drop-shadow-md z-[1000]">
                          <MapPinIcon className="w-10 h-10" />
                      </div>
                  </div>
