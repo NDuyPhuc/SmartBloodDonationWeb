@@ -120,16 +120,24 @@ const HospitalManageEmergency: React.FC = () => {
     }, []);
 
     const handleConfirmDonation = async (donor: DonorInfo) => {
-        // Removed window.confirm to avoid blocking and focus on functionality
-        // if (!window.confirm(`Xác nhận người hiến ${donor.donorName} đã hoàn thành hiến máu?`)) return;
-        
         setProcessingId(donor.realDocId);
         try {
-            // Update using realDocId, not userId
+            // Update using realDocId
             const donorRef = doc(db, 'blood_requests', donor.requestId, 'donors', donor.realDocId);
             await updateDoc(donorRef, {
                 status: 'Completed'
             });
+            
+            // OPTIMISTIC UPDATE: Update local state immediately
+            // because onSnapshot on the parent collection won't trigger for subcollection updates
+            setDonors(prevDonors => 
+                prevDonors.map(d => 
+                    d.realDocId === donor.realDocId 
+                        ? { ...d, status: 'Completed' } 
+                        : d
+                )
+            );
+
         } catch (error: any) {
             console.error("Error confirming donation:", error);
             alert(`Có lỗi xảy ra khi cập nhật trạng thái: ${error.message}`);
@@ -155,6 +163,16 @@ const HospitalManageEmergency: React.FC = () => {
                 certificateUrl: certUrl,
                 certificateIssuedAt: serverTimestamp()
             });
+            
+             // Optimistic Update
+            setDonors(prevDonors => 
+                prevDonors.map(d => 
+                    d.realDocId === selectedDonor.realDocId 
+                        ? { ...d, certificateUrl: certUrl } 
+                        : d
+                )
+            );
+
             setIsCertModalOpen(false);
             setCertUrl('');
             alert("Cấp chứng nhận thành công!");
@@ -184,6 +202,16 @@ const HospitalManageEmergency: React.FC = () => {
                  rating: rating,
                  review: review
              });
+             
+             // Optimistic Update
+             setDonors(prevDonors => 
+                prevDonors.map(d => 
+                    d.realDocId === selectedDonor.realDocId 
+                        ? { ...d, rating: rating, review: review } 
+                        : d
+                )
+            );
+
              setIsRatingModalOpen(false);
              alert("Đánh giá thành công!");
         } catch (error) {
