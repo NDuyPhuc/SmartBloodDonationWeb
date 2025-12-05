@@ -20,10 +20,10 @@ export enum Page {
 }
 
 export enum AppointmentStatus {
-  Pending = 'Đang chờ',
-  Confirmed = 'ĐÃ XÁC NHẬN',
-  Cancelled = 'ĐÃ HỦY',
-  Completed = 'Đã hoàn thành',
+  Pending = 'PENDING',
+  Confirmed = 'CONFIRMED',
+  Cancelled = 'CANCELLED',
+  Completed = 'COMPLETED',
 }
 
 export enum BloodType {
@@ -67,6 +67,7 @@ export interface Appointment {
   userId: string;
   hospitalId: string;
   donorName?: string; // Will be populated after fetching user data
+  phoneNumber?: string; // New field for donor phone number
   bloodType?: BloodType; // Will be populated after fetching user data
   dateTime: {
     seconds: number;

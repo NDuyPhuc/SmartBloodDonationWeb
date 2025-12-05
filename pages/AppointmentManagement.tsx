@@ -5,7 +5,7 @@ import { db, auth } from '../firebase';
 import { collection, onSnapshot, doc, updateDoc, getDocs, query, where, documentId, serverTimestamp } from 'firebase/firestore';
 import { CalendarIcon, CertificateIcon } from '../components/icons/Icons';
 import Modal from '../components/Modal';
-import { LinkIcon } from '@heroicons/react/24/outline';
+import { LinkIcon, PhoneIcon } from '@heroicons/react/24/outline';
 
 const AppointmentManagement: React.FC = () => {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
@@ -28,7 +28,7 @@ const AppointmentManagement: React.FC = () => {
     const q = query(collection(db, 'appointments'), where('hospitalId', '==', currentUser.uid));
     const unsub = onSnapshot(q, async (snapshot) => {
       setLoading(true);
-      const appointmentsData: Omit<Appointment, 'donorName' | 'bloodType'>[] = snapshot.docs.map(doc => ({
+      const appointmentsData: Omit<Appointment, 'donorName' | 'bloodType' | 'phoneNumber'>[] = snapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data(),
       } as Appointment));
@@ -63,6 +63,7 @@ const AppointmentManagement: React.FC = () => {
         ...app,
         donorName: usersMap.get(app.userId)?.fullName || 'Không rõ',
         bloodType: usersMap.get(app.userId)?.bloodType || undefined,
+        phoneNumber: usersMap.get(app.userId)?.phoneNumber || 'N/A', // Map phone number
       }));
 
       // Sort by date desc
@@ -83,6 +84,10 @@ const AppointmentManagement: React.FC = () => {
       console.error("Error updating status: ", error);
       alert("Cập nhật trạng thái thất bại!");
     }
+  };
+
+  const handleApprove = (id: string) => {
+      updateAppointmentStatus(id, AppointmentStatus.Confirmed);
   };
 
   const openCertificateModal = (appointment: Appointment) => {
@@ -179,10 +184,16 @@ const AppointmentManagement: React.FC = () => {
                 <div className="flex justify-between items-start">
                     <div>
                         <p className="font-bold text-gray-800 text-lg">{app.donorName}</p>
-                        <div className="flex items-center mt-1">
-                             <span className="text-xs font-semibold text-gray-500 uppercase mr-1">Nhóm máu:</span>
-                             <span className="bg-red-50 text-red-700 px-2 py-0.5 rounded text-xs font-bold">{app.bloodType || 'N/A'}</span>
+                        <div className="flex items-center mt-1 space-x-2">
+                             <div className="flex items-center">
+                                 <span className="text-xs font-semibold text-gray-500 uppercase mr-1">Nhóm máu:</span>
+                                 <span className="bg-red-50 text-red-700 px-2 py-0.5 rounded text-xs font-bold">{app.bloodType || 'N/A'}</span>
+                             </div>
                         </div>
+                         <div className="flex items-center mt-1 text-gray-600 text-sm">
+                             <PhoneIcon className="w-3.5 h-3.5 mr-1" />
+                             {app.phoneNumber}
+                         </div>
                     </div>
                     <span className={`px-2.5 py-1 text-xs font-semibold rounded-full ${getStatusColor(app.status)}`}>
                         {app.status}
@@ -195,7 +206,7 @@ const AppointmentManagement: React.FC = () => {
                 
                 {app.status === AppointmentStatus.Pending && (
                     <div className="flex space-x-3 pt-3 mt-1">
-                        <button onClick={() => updateAppointmentStatus(app.id, AppointmentStatus.Confirmed)} className="flex-1 bg-green-50 text-green-700 py-2 rounded-lg text-sm font-semibold hover:bg-green-100 transition">Xác nhận</button>
+                        <button onClick={() => handleApprove(app.id)} className="flex-1 bg-green-50 text-green-700 py-2 rounded-lg text-sm font-semibold hover:bg-green-100 transition">Duyệt</button>
                         <button onClick={() => updateAppointmentStatus(app.id, AppointmentStatus.Cancelled)} className="flex-1 bg-red-50 text-red-700 py-2 rounded-lg text-sm font-semibold hover:bg-red-100 transition">Hủy</button>
                     </div>
                 )}
@@ -230,6 +241,7 @@ const AppointmentManagement: React.FC = () => {
             <thead>
               <tr className="bg-gray-50/80">
                 <th scope="col" className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Tên người hiến</th>
+                <th scope="col" className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Số điện thoại</th>
                 <th scope="col" className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Nhóm máu</th>
                 <th scope="col" className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Ngày & Giờ</th>
                 <th scope="col" className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Trạng thái</th>
@@ -241,6 +253,9 @@ const AppointmentManagement: React.FC = () => {
                   <tr key={app.id} className="hover:bg-gray-50/80 transition-colors">
                     <td className="px-6 py-4 whitespace-nowrap">
                         <div className="font-medium text-gray-900">{app.donorName}</div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 font-mono">
+                        {app.phoneNumber}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                         <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-50 text-red-800">
@@ -256,7 +271,7 @@ const AppointmentManagement: React.FC = () => {
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                       {app.status === AppointmentStatus.Pending ? (
                           <div className="flex space-x-3">
-                            <button onClick={() => updateAppointmentStatus(app.id, AppointmentStatus.Confirmed)} className="text-green-600 hover:text-green-900 font-semibold text-xs uppercase tracking-wide transition-colors">Xác nhận</button>
+                            <button onClick={() => handleApprove(app.id)} className="text-green-600 hover:text-green-900 font-semibold text-xs uppercase tracking-wide transition-colors">Duyệt</button>
                             <span className="text-gray-300">|</span>
                             <button onClick={() => updateAppointmentStatus(app.id, AppointmentStatus.Cancelled)} className="text-red-600 hover:text-red-900 font-semibold text-xs uppercase tracking-wide transition-colors">Hủy</button>
                           </div>
