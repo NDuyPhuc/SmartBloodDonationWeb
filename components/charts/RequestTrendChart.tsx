@@ -14,7 +14,7 @@ interface RequestTrendChartProps {
 const RequestTrendChart: React.FC<RequestTrendChartProps> = ({ data }) => {
   return (
     <div className="bg-white p-6 rounded-lg shadow-md h-96">
-      <h3 className="text-lg font-semibold text-gray-700 mb-4">Xu hướng Yêu cầu Máu (30 ngày qua)</h3>
+      <h3 className="text-lg font-semibold text-gray-700 mb-4">Xu hướng Đặt lịch (30 ngày qua)</h3>
       <ResponsiveContainer width="100%" height="85%" minWidth={0} minHeight={0}>
         <LineChart data={data}>
           <CartesianGrid strokeDasharray="3 3" />
@@ -22,7 +22,7 @@ const RequestTrendChart: React.FC<RequestTrendChartProps> = ({ data }) => {
           <YAxis />
           <Tooltip />
           <Legend />
-          <Line type="monotone" dataKey="requests" stroke="#FF6384" strokeWidth={2} activeDot={{ r: 8 }} />
+          <Line type="monotone" dataKey="requests" name="Lượt hẹn" stroke="#FF6384" strokeWidth={2} activeDot={{ r: 8 }} />
         </LineChart>
       </ResponsiveContainer>
     </div>
