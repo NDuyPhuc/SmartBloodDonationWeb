@@ -1,13 +1,13 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import StatCard from '../components/StatCard';
 import BloodTypePieChart from '../components/charts/BloodTypePieChart';
 import RequestTrendChart from '../components/charts/RequestTrendChart';
 import { RequestStatus, BloodType, Page, Appointment } from '../types';
 import { CalendarIcon, MegaphoneIcon } from '../components/icons/Icons';
-import { HeartIcon } from '@heroicons/react/24/solid';
+import { HeartIcon, PlusIcon, MinusIcon } from '@heroicons/react/24/solid';
 import { db, auth } from '../firebase';
-import { collection, onSnapshot, query, where, Timestamp, doc } from 'firebase/firestore';
+import { collection, onSnapshot, query, where, Timestamp, doc, updateDoc } from 'firebase/firestore';
 
 interface DashboardProps {
   setActivePage: (page: Page) => void;
@@ -20,8 +20,13 @@ const Dashboard: React.FC<DashboardProps> = ({ setActivePage }) => {
   
   // State for Blood Inventory
   const [inventory, setInventory] = useState<Record<string, number>>({});
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [isUpdatingInventory, setIsUpdatingInventory] = useState(false);
+  
+  // State for inline editing
+  const [editingType, setEditingType] = useState<string | null>(null);
+  const [editInputValue, setEditInputValue] = useState("");
+  
+  const inventorySectionRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const currentUser = auth.currentUser;
@@ -123,6 +128,68 @@ const Dashboard: React.FC<DashboardProps> = ({ setActivePage }) => {
     };
   }, []);
 
+  const updateInventory = (type: string, delta: number) => {
+    setInventory(prev => {
+        const current = prev[type] || 0;
+        const newValue = Math.max(0, current + delta);
+        return { ...prev, [type]: newValue };
+    });
+  };
+
+  const handleDoubleClick = (type: string, currentValue: number) => {
+      setEditingType(type);
+      setEditInputValue(currentValue.toString());
+  };
+
+  const handleEditChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+      // Only allow numbers
+      const val = e.target.value;
+      if (/^\d*$/.test(val)) {
+          setEditInputValue(val);
+      }
+  };
+
+  const handleEditSubmit = () => {
+      if (editingType) {
+          const newValue = parseInt(editInputValue, 10);
+          if (!isNaN(newValue)) {
+               setInventory(prev => ({ ...prev, [editingType]: newValue }));
+          } else if (editInputValue === "") {
+               setInventory(prev => ({ ...prev, [editingType]: 0 }));
+          }
+          setEditingType(null);
+      }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+      if (e.key === 'Enter') {
+          handleEditSubmit();
+      }
+  };
+
+  const handleSaveInventory = async () => {
+    const currentUser = auth.currentUser;
+    if (!currentUser) return;
+
+    setIsUpdatingInventory(true);
+    try {
+        const hospitalRef = doc(db, 'hospitals', currentUser.uid);
+        await updateDoc(hospitalRef, {
+            inventory: inventory
+        });
+        alert("Cập nhật kho máu thành công!");
+    } catch (error) {
+        console.error("Error updating inventory:", error);
+        alert("Cập nhật thất bại.");
+    } finally {
+        setIsUpdatingInventory(false);
+    }
+  };
+  
+  const scrollToInventory = () => {
+      inventorySectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+
   const totalBloodUnits = Object.values(inventory).reduce((acc: number, curr: number) => acc + curr, 0);
 
   const pieData = Object.entries(inventory).map(([name, value]) => ({
@@ -148,26 +215,113 @@ const Dashboard: React.FC<DashboardProps> = ({ setActivePage }) => {
           value={todaysAppointments}
           icon={<CalendarIcon className="w-8 h-8 text-white" />}
           color="bg-blue-500"
+          onClick={() => setActivePage(Page.Appointments)}
         />
         <StatCard
           title="Yêu cầu Khẩn cấp (Active)"
           value={activeRequests}
           icon={<MegaphoneIcon className="w-8 h-8 text-white" />}
           color="bg-red-500"
+          onClick={() => setActivePage(Page.EmergencyRequests)}
         />
         <StatCard
           title="Tổng Đơn vị máu (Kho)"
           value={totalBloodUnits}
           icon={<HeartIcon className="w-8 h-8 text-white" />}
           color="bg-green-500"
+          onClick={scrollToInventory}
         />
+      </div>
+
+      {/* Inventory Management Section */}
+      <div ref={inventorySectionRef} className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 mb-8 animate-fade-in-up">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4 border-b border-gray-50 pb-4">
+            <div>
+                <h2 className="text-xl font-bold text-gray-800 flex items-center">
+                    <HeartIcon className="w-6 h-6 text-red-500 mr-2" />
+                    Cập nhật Tồn kho máu
+                </h2>
+                <p className="text-sm text-gray-500 mt-1 ml-8">Quản lý số lượng đơn vị máu hiện có tại bệnh viện.</p>
+            </div>
+            <button
+                onClick={handleSaveInventory}
+                disabled={isUpdatingInventory}
+                className="w-full sm:w-auto bg-red-600 text-white px-6 py-2.5 rounded-xl font-bold shadow-md hover:bg-red-700 hover:shadow-lg transition-all disabled:bg-gray-300 disabled:shadow-none flex items-center justify-center transform hover:-translate-y-0.5"
+            >
+                {isUpdatingInventory ? (
+                    <>
+                        <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        Đang lưu...
+                    </>
+                ) : (
+                    'Lưu cập nhật'
+                )}
+            </button>
+        </div>
+        
+        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-4">
+            {Object.values(BloodType).map((type) => (
+                <div key={type} className="relative overflow-hidden bg-white p-3 md:p-4 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-all duration-300 group">
+                    {/* Decorative Background */}
+                    <div className="absolute -right-4 -bottom-4 opacity-5 group-hover:opacity-10 transition-opacity pointer-events-none">
+                        <HeartIcon className="w-20 h-20 text-red-600" />
+                    </div>
+                    
+                    <div className="relative z-10 flex flex-col items-center">
+                        <span className="text-xs md:text-sm font-bold text-gray-500 mb-3 uppercase tracking-wider">{type}</span>
+                        
+                        <div className="flex items-center justify-between w-full">
+                            <button 
+                                onClick={() => updateInventory(type, -1)}
+                                className="w-8 h-8 flex items-center justify-center rounded-full bg-gray-50 text-gray-600 hover:bg-red-50 hover:text-red-600 transition-colors active:scale-90"
+                            >
+                                <MinusIcon className="w-4 h-4" />
+                            </button>
+                            
+                            <div className="text-center flex-1 h-10 flex items-center justify-center">
+                                {editingType === type ? (
+                                    <input 
+                                        type="text"
+                                        autoFocus
+                                        value={editInputValue}
+                                        onChange={handleEditChange}
+                                        onBlur={handleEditSubmit}
+                                        onKeyDown={handleKeyDown}
+                                        className="w-12 text-center text-xl font-black text-red-600 border-b-2 border-red-500 focus:outline-none bg-transparent p-0"
+                                    />
+                                ) : (
+                                    <span 
+                                        onDoubleClick={() => handleDoubleClick(type, inventory[type] || 0)}
+                                        className="block text-2xl font-black text-gray-800 leading-none cursor-pointer hover:text-red-500 transition-colors select-none"
+                                        title="Đúp chuột để nhập số"
+                                    >
+                                        {inventory[type] || 0}
+                                    </span>
+                                )}
+                            </div>
+
+                            <button 
+                                 onClick={() => updateInventory(type, 1)}
+                                 className="w-8 h-8 flex items-center justify-center rounded-full bg-gray-50 text-gray-600 hover:bg-red-50 hover:text-red-600 transition-colors active:scale-90"
+                            >
+                                <PlusIcon className="w-4 h-4" />
+                            </button>
+                        </div>
+                        <span className="text-[10px] text-gray-400 font-medium mt-1">đơn vị</span>
+                    </div>
+                </div>
+            ))}
+        </div>
       </div>
 
       {/* Charts Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* Blood Inventory Pie Chart */}
         <div className="bg-white p-6 rounded-xl shadow-md border border-gray-100 h-96 flex flex-col">
-            <h3 className="text-lg font-semibold text-gray-700 mb-4">Kho máu hiện tại</h3>
+            <h3 className="text-lg font-semibold text-gray-700 mb-4">Biểu đồ Kho máu hiện tại</h3>
             <div className="flex-1 min-h-0">
                 <BloodTypePieChart data={displayPieData} />
             </div>

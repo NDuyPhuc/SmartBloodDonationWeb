@@ -6,11 +6,15 @@ interface StatCardProps {
   value: string | number;
   icon: React.ReactNode;
   color: string;
+  onClick?: () => void;
 }
 
-const StatCard: React.FC<StatCardProps> = ({ title, value, icon, color }) => {
+const StatCard: React.FC<StatCardProps> = ({ title, value, icon, color, onClick }) => {
   return (
-    <div className="bg-white p-6 rounded-xl shadow-[0_2px_10px_-3px_rgba(6,81,237,0.1)] hover:shadow-lg transition-shadow duration-300 border border-gray-100 flex items-center group">
+    <div 
+      onClick={onClick}
+      className={`bg-white p-6 rounded-xl shadow-[0_2px_10px_-3px_rgba(6,81,237,0.1)] hover:shadow-lg transition-shadow duration-300 border border-gray-100 flex items-center group ${onClick ? 'cursor-pointer' : ''}`}
+    >
       <div className={`p-4 rounded-xl ${color} shadow-sm group-hover:scale-110 transition-transform duration-300`}>
         {icon}
       </div>
