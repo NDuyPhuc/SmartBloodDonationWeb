@@ -24,6 +24,7 @@ export enum AppointmentStatus {
   Confirmed = 'CONFIRMED',
   Cancelled = 'CANCELLED',
   Completed = 'COMPLETED',
+  Rejected = 'REJECTED', // Added Rejected status
 }
 
 export enum BloodType {
@@ -116,6 +117,7 @@ export interface Appointment {
       nanoseconds: number;
   };
   labResult?: LabResult; // New field for test results
+  rejectionReason?: string; // Reason if rejected
 }
 
 export interface PledgedDonor {
@@ -135,7 +137,7 @@ export interface PledgedDonor {
     seconds: number;
     nanoseconds: number;
   };
-  status?: 'Pending' | 'Completed' | 'Cancelled'; 
+  status?: 'Pending' | 'Completed' | 'Cancelled' | 'Rejected'; 
   certificateUrl?: string;
   certificateIssuedAt?: {
       seconds: number;
@@ -144,6 +146,7 @@ export interface PledgedDonor {
   labResult?: LabResult; // New field for test results
   rating?: number; 
   review?: string;
+  rejectionReason?: string; // Reason if rejected
 }
 
 
