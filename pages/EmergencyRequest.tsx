@@ -1,10 +1,10 @@
 
 import React, { useState, useEffect } from 'react';
-import { BloodRequest, BloodType, PriorityLevel, RequestStatus, PledgedDonor } from '../types';
+import { BloodRequest, BloodType, PriorityLevel, RequestStatus, PledgedDonor, BloodVolume } from '../types';
 import Modal from '../components/Modal';
 import { auth, db } from '../firebase';
 import { collection, onSnapshot, addDoc, serverTimestamp, orderBy, query, doc, getDoc, where, updateDoc, getDocs } from 'firebase/firestore';
-import { CheckCircleIcon } from '@heroicons/react/24/outline';
+import { CheckCircleIcon, BeakerIcon } from '@heroicons/react/24/outline';
 
 const EmergencyRequest: React.FC = () => {
   const [requests, setRequests] = useState<BloodRequest[]>([]);
@@ -16,10 +16,16 @@ const EmergencyRequest: React.FC = () => {
   const [isFetchingDonors, setIsFetchingDonors] = useState(false);
   const [processingId, setProcessingId] = useState<string | null>(null); // Track which request is being processed
   
-  const [newRequest, setNewRequest] = useState<{bloodType: BloodType, quantity: number, priority: PriorityLevel}>({
+  const [newRequest, setNewRequest] = useState<{
+      bloodType: BloodType, 
+      quantity: number, 
+      priority: PriorityLevel,
+      preferredVolume: BloodVolume | ''
+  }>({
       bloodType: BloodType.APositive,
       quantity: 1,
-      priority: PriorityLevel.Medium
+      priority: PriorityLevel.Medium,
+      preferredVolume: ''
   });
 
   useEffect(() => {
@@ -106,16 +112,24 @@ const EmergencyRequest: React.FC = () => {
       const userDocSnap = await getDoc(userDocRef);
       const hospitalName = userDocSnap.exists() ? userDocSnap.data().fullName : 'Bệnh viện không xác định';
 
-      await addDoc(collection(db, 'blood_requests'), {
-        ...newRequest,
+      const requestData: any = {
+        bloodType: newRequest.bloodType,
+        quantity: newRequest.quantity,
+        priority: newRequest.priority,
         createdAt: serverTimestamp(),
         status: RequestStatus.Active,
         hospitalId: currentUser.uid,
         hospitalName: hospitalName,
         donorsCount: 0,
-      });
+      };
+
+      if (newRequest.preferredVolume) {
+          requestData.preferredVolume = newRequest.preferredVolume;
+      }
+
+      await addDoc(collection(db, 'blood_requests'), requestData);
       setIsModalOpen(false);
-      setNewRequest({ bloodType: BloodType.APositive, quantity: 1, priority: PriorityLevel.Medium });
+      setNewRequest({ bloodType: BloodType.APositive, quantity: 1, priority: PriorityLevel.Medium, preferredVolume: '' });
     } catch (error) {
       console.error("Error creating request: ", error);
       alert("Tạo yêu cầu thất bại!");
@@ -194,6 +208,12 @@ const EmergencyRequest: React.FC = () => {
                              <span className="font-bold text-gray-800 text-lg bg-red-50 text-red-700 px-2 rounded">{req.bloodType}</span>
                         </div>
                         <p className="text-sm text-gray-600 mt-1">Số lượng: <strong>{req.quantity} đơn vị</strong></p>
+                        {req.preferredVolume && (
+                            <p className="text-xs text-blue-600 mt-1 flex items-center">
+                                <BeakerIcon className="w-3 h-3 mr-1" />
+                                Ưu tiên: {req.preferredVolume}
+                            </p>
+                        )}
                     </div>
                     <span className={`px-2.5 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(req.status)}`}>
                           {req.status}
@@ -256,7 +276,12 @@ const EmergencyRequest: React.FC = () => {
                     <td className="px-6 py-4 whitespace-nowrap">
                         <span className="font-bold text-gray-800 bg-red-50 px-2 py-1 rounded text-red-700">{req.bloodType}</span>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 font-medium">{req.quantity} đơn vị</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 font-medium">
+                        {req.quantity} đơn vị
+                        {req.preferredVolume && (
+                            <div className="text-xs text-blue-500 mt-1">Ưu tiên: {req.preferredVolume}</div>
+                        )}
+                    </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{req.priority}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{formatDate(req.createdAt)}</td>
                     <td className="px-6 py-4 whitespace-nowrap">
@@ -313,6 +338,19 @@ const EmergencyRequest: React.FC = () => {
                 <label htmlFor="quantity" className="block text-sm font-semibold text-gray-700 mb-1">Số lượng (đơn vị)</label>
                 <input type="number" id="quantity" value={newRequest.quantity} onChange={e => setNewRequest({...newRequest, quantity: parseInt(e.target.value) || 0})} className="focus:ring-red-500 focus:border-red-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-lg py-2.5 px-3" min="1" />
             </div>
+            
+            <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">Dung tích mong muốn (tùy chọn)</label>
+                <select 
+                    value={newRequest.preferredVolume} 
+                    onChange={e => setNewRequest({...newRequest, preferredVolume: e.target.value as BloodVolume})} 
+                    className="block w-full pl-3 pr-10 py-2.5 text-base border-gray-300 focus:outline-none focus:ring-red-500 focus:border-red-500 sm:text-sm rounded-lg shadow-sm"
+                >
+                    <option value="">Không yêu cầu cụ thể</option>
+                    {Object.values(BloodVolume).map(vol => <option key={vol} value={vol}>{vol}</option>)}
+                </select>
+            </div>
+
             <div>
                 <label htmlFor="priority" className="block text-sm font-semibold text-gray-700 mb-1">Mức độ ưu tiên</label>
                 <select id="priority" value={newRequest.priority} onChange={e => setNewRequest({...newRequest, priority: e.target.value as PriorityLevel})} className="block w-full pl-3 pr-10 py-2.5 text-base border-gray-300 focus:outline-none focus:ring-red-500 focus:border-red-500 sm:text-sm rounded-lg shadow-sm">

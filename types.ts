@@ -37,6 +37,19 @@ export enum BloodType {
   ONegative = 'O-',
 }
 
+export enum BloodVolume {
+    Vol250 = '250ml',
+    Vol350 = '350ml',
+    Vol450 = '450ml',
+}
+
+export enum DonationType {
+    WholeBlood = 'Máu toàn phần',
+    Platelets = 'Tiểu cầu',
+    Plasma = 'Huyết tương',
+    StemCells = 'Tế bào gốc/Bạch cầu',
+}
+
 export enum RequestStatus {
   Pending = 'ĐANG CHỜ',
   Active = 'ĐANG HOẠT ĐỘNG',
@@ -61,25 +74,48 @@ export enum UserStatus {
     Locked = 'Đã khóa',
 }
 
+export enum ScreeningStatus {
+    Passed = 'Đạt chuẩn (Sử dụng được)',
+    Failed = 'Không đạt (Hủy bỏ)',
+}
+
+export interface LabResult {
+    documentUrl: string; // Link to the result file (PDF/Image)
+    conclusion: string; // Doctor's conclusion or key indices summary
+    screeningStatus?: ScreeningStatus; // New: Is the blood usable?
+    confirmedBloodType?: BloodType; // New: Confirmed ABO/Rh after testing
+    recordedAt: {
+        seconds: number;
+        nanoseconds: number;
+    };
+}
 
 export interface Appointment {
   id: string;
   userId: string;
   hospitalId: string;
-  donorName?: string; // Will be populated after fetching user data
-  phoneNumber?: string; // New field for donor phone number
-  bloodType?: BloodType; // Will be populated after fetching user data
+  donorName?: string; 
+  phoneNumber?: string; 
+  bloodType?: BloodType; 
+  isPriority?: boolean; 
+  priorityReason?: string; 
+  
+  // Volume fields
+  registeredVolume?: BloodVolume; // Volume user wants to donate
+  actualVolume?: BloodVolume; // Volume actually donated after screening
+
   dateTime: {
     seconds: number;
     nanoseconds: number;
   };
   hospitalName: string;
   status: AppointmentStatus;
-  certificateUrl?: string; // Link to the certificate file (Drive, Dropbox, etc.)
+  certificateUrl?: string; 
   certificateIssuedAt?: {
       seconds: number;
       nanoseconds: number;
   };
+  labResult?: LabResult; // New field for test results
 }
 
 export interface PledgedDonor {
@@ -90,18 +126,23 @@ export interface PledgedDonor {
   userPhone?: string;
   userBloodType: BloodType;
   requestedBloodType?: BloodType;
+  
+  // Volume fields
+  pledgedVolume?: BloodVolume; // Volume user offered
+  actualVolume?: BloodVolume; // Volume actually taken
+
   pledgedAt: {
     seconds: number;
     nanoseconds: number;
   };
-  // New fields for management
-  status?: 'Pending' | 'Completed' | 'Cancelled'; // Pending (Đã đăng ký), Completed (Đã hiến), Cancelled (Hủy)
+  status?: 'Pending' | 'Completed' | 'Cancelled'; 
   certificateUrl?: string;
   certificateIssuedAt?: {
       seconds: number;
       nanoseconds: number;
   };
-  rating?: number; // 1-5 stars
+  labResult?: LabResult; // New field for test results
+  rating?: number; 
   review?: string;
 }
 
@@ -111,6 +152,7 @@ export interface BloodRequest {
   bloodType: BloodType;
   quantity: number; // in units
   priority: PriorityLevel;
+  preferredVolume?: BloodVolume; // Hospital can suggest preferred volume
   createdAt: {
     seconds: number;
     nanoseconds: number;
@@ -139,7 +181,7 @@ export interface Hospital {
         lat: number;
         lng: number;
     };
-    inventory?: Record<string, number>; // Stores blood type counts: { "A+": 10, "B-": 5 }
+    inventory?: Record<string, number>; 
 }
 
 export interface User {
@@ -149,7 +191,11 @@ export interface User {
     age?: number;
     gender?: 'Nam' | 'Nữ' | 'Khác';
     lastDonationDate: string | null;
+    lastDonationType?: DonationType; // New field to track the type of last donation
     email: string;
     phoneNumber?: string;
     status: UserStatus;
+    donationCount?: number; 
+    isPriority?: boolean; 
+    priorityReason?: string; 
 }
