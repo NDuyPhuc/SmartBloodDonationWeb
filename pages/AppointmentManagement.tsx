@@ -89,9 +89,20 @@ const AppointmentManagement: React.FC = () => {
       today.setHours(0, 0, 0, 0); 
       
       const lastType = user.lastDonationType || DonationType.WholeBlood;
-      let daysRequired = 84; 
-      if (lastType === DonationType.Platelets || lastType === DonationType.Plasma) daysRequired = 14;
-      else if (lastType === DonationType.StemCells) daysRequired = 7;
+      let daysRequired = 0;
+
+      // Logic cập nhật theo quy định mới
+      if (lastType === DonationType.WholeBlood || lastType === DonationType.RedBloodCells) {
+          daysRequired = 84; // 12 tuần
+      } else if (lastType === DonationType.Platelets || lastType === DonationType.Plasma) {
+          daysRequired = 14; // 2 tuần
+      } else if (lastType === DonationType.StemCells || lastType === DonationType.Granulocytes) {
+          // Quy định: Tối đa 3 lần trong 7 ngày.
+          // Để đảm bảo an toàn trong hệ thống cơ bản chưa theo dõi tần suất chi tiết, ta đặt khoảng cách tối thiểu là 7 ngày.
+          daysRequired = 7; 
+      } else {
+          daysRequired = 84; // Mặc định an toàn
+      }
 
       const nextEligibleDate = new Date(lastDate);
       nextEligibleDate.setDate(lastDate.getDate() + daysRequired);
@@ -102,7 +113,7 @@ const AppointmentManagement: React.FC = () => {
           const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
           return {
               eligible: false,
-              message: `Mới hiến ${lastType} ngày ${user.lastDonationDate}. Cần nghỉ ${diffDays} ngày.`,
+              message: `Mới hiến ${lastType} ngày ${user.lastDonationDate}. Cần nghỉ ${diffDays} ngày nữa.`,
               nextDate: nextEligibleDate.toLocaleDateString('vi-VN')
           };
       }

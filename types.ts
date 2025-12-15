@@ -46,9 +46,11 @@ export enum BloodVolume {
 
 export enum DonationType {
     WholeBlood = 'Máu toàn phần',
+    RedBloodCells = 'Khối hồng cầu',
     Platelets = 'Tiểu cầu',
     Plasma = 'Huyết tương',
-    StemCells = 'Tế bào gốc/Bạch cầu',
+    StemCells = 'Tế bào gốc',
+    Granulocytes = 'Bạch cầu hạt trung tính',
 }
 
 export enum RequestStatus {

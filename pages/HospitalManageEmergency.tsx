@@ -119,9 +119,18 @@ const HospitalManageEmergency: React.FC = () => {
         today.setHours(0,0,0,0);
         
         const lastType = user.lastDonationType || DonationType.WholeBlood;
-        let daysRequired = 84;
-        if (lastType === DonationType.Platelets || lastType === DonationType.Plasma) daysRequired = 14;
-        else if (lastType === DonationType.StemCells) daysRequired = 7;
+        let daysRequired = 0;
+
+        // Logic cập nhật theo quy định mới
+        if (lastType === DonationType.WholeBlood || lastType === DonationType.RedBloodCells) {
+            daysRequired = 84; // 12 tuần
+        } else if (lastType === DonationType.Platelets || lastType === DonationType.Plasma) {
+            daysRequired = 14; // 2 tuần
+        } else if (lastType === DonationType.StemCells || lastType === DonationType.Granulocytes) {
+            daysRequired = 7; // Tối đa 3 lần/7 ngày -> Khoảng cách an toàn tối thiểu
+        } else {
+            daysRequired = 84;
+        }
 
         const nextEligible = new Date(lastDate);
         nextEligible.setDate(lastDate.getDate() + daysRequired);
@@ -130,7 +139,7 @@ const HospitalManageEmergency: React.FC = () => {
         if (today < nextEligible) {
              const diffTime = Math.abs(nextEligible.getTime() - today.getTime());
              const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-             return { eligible: false, message: `Mới hiến ${lastType} ngày ${user.lastDonationDate}. Cần nghỉ ${diffDays} ngày.` };
+             return { eligible: false, message: `Mới hiến ${lastType} ngày ${user.lastDonationDate}. Cần nghỉ ${diffDays} ngày nữa.` };
         }
         return { eligible: true };
     };
@@ -263,7 +272,7 @@ const HospitalManageEmergency: React.FC = () => {
                         const userDoc = await transaction.get(userRef);
                         if (userDoc.exists()) {
                             userData = userDoc.data() as User;
-                            const check = checkEligibility(userData);
+                            // const check = checkEligibility(userData);
                             // Optional: Block if ineligible
                             // if (!check.eligible) throw new Error(`CHẶN: ${check.message}`);
                             newCount = (userData.donationCount || 0) + 1;
@@ -575,7 +584,7 @@ const HospitalManageEmergency: React.FC = () => {
             {/* ... Reuse Modal Logic ... */}
              <Modal isOpen={isCertModalOpen} onClose={() => setIsCertModalOpen(false)} title="Cấp Chứng nhận">
                 <form onSubmit={handleIssueCertificate} className="space-y-4">
-                    <div className="text-sm text-blue-700 bg-blue-50 p-3 rounded flex items-center"><LinkIcon className="w-5 h-5 mr-2" /> Dán link file chứng nhận (Google Drive/Dropbox).</div>
+                    <div className="text-sm text-blue-700 bg-blue-50 p-3 rounded flex items-center"><LinkIcon className="w-5 h-5 mr-2" /> Dán link file chứng nhận (Google Drive/Dropbox public).</div>
                     <input type="url" value={certUrl} onChange={(e) => setCertUrl(e.target.value)} className="w-full border-gray-300 rounded-lg p-2.5 text-sm" placeholder="https://..." required />
                     <div className="flex justify-end pt-4 gap-2"><button type="button" onClick={() => setIsCertModalOpen(false)} className="px-4 py-2 border rounded-lg text-sm">Hủy</button><button type="submit" disabled={certLoading} className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-bold">Lưu</button></div>
                 </form>
